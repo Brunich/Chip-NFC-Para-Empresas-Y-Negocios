@@ -33,6 +33,7 @@ La lógica está separada de la interfaz, así se prueba sin navegador (`tests/`
 - Sin servidor: los datos del negocio viajan en el enlace que se graba en el chip, y los sellos viven en el celular del cliente.
 - Un sello por día como máximo, para que no se pueda llenar la tarjeta en una sola visita.
 - El PIN de canje no va en el enlace: sólo una huella SHA-256 atada al nombre del negocio.
+- Cada enlace dice qué chip necesita: la tarjeta de sellos cabe en un NTAG213 (en un NTAG215 si lleva enlace de reseña); un menú que no cabe ofrece una versión sin descripciones para NTAG216, y el QR lleva el menú completo.
 - En Android (Chrome) el chip se graba desde la página con Web NFC; en iPhone se graba con una app como NFC Tools y se lee sin app.
 
 ## Correrlo

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { applyVisit, bizFrom, bizLink, emptyCard, pinHash, redeem, slug } from '../src/stamp-logic.ts';
-import { chipFor, DEMO, menuLink, readMenu } from '../src/menu-logic.ts';
+import { chipFor, DEMO, menuLink, readMenu, stripDesc, linkBytes } from '../src/menu-logic.ts';
 
 test('el enlace del chip lleva y trae los datos del negocio', () => {
  const b = { name: 'Café Aurora', goal: 6, prize: 'Un latte', color: '5fcfa9', review: '', wa: '528112345678' };
@@ -49,4 +49,15 @@ test('el menú viaja comprimido en el enlace y cabe en un chip', () => {
  assert.equal(chipFor(100), 'NTAG213');
  assert.equal(chipFor(800), 'NTAG216');
  assert.equal(chipFor(2000), null);
+});
+
+test('lo que de verdad cabe en cada chip con el dominio del portafolio', () => {
+ const O = 'https://bruno-portfolio-azure.vercel.app';
+ const basic = bizLink({ name: 'Café Aurora', goal: 8, prize: 'Un latte', color: 'a894f0', review: '', wa: '528112345678', pin: 'a1b2c3d4e5' }, O);
+ assert.equal(chipFor(linkBytes(basic)), 'NTAG213');
+ const withReview = bizLink({ name: 'Café Aurora', goal: 8, prize: 'Un latte', color: 'a894f0', review: 'https://g.page/r/CaBcDeFgHiJkEAE/review', wa: '528112345678', pin: 'a1b2c3d4e5' }, O);
+ assert.equal(chipFor(linkBytes(withReview)), 'NTAG215');
+ assert.equal(chipFor(linkBytes(menuLink(DEMO, '4', O))), null);
+ assert.equal(chipFor(linkBytes(menuLink(stripDesc(DEMO), '4', O))), 'NTAG216');
+ assert.equal(readMenu(new URL(menuLink(stripDesc(DEMO), '', O)).hash).s[0][1][0][2], '');
 });

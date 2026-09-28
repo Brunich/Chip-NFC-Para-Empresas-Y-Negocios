@@ -19,3 +19,8 @@ export const money = (n: number) => `$${n.toLocaleString('es-MX')}`;
 export const FLAGS: Record<string, [string, string]> = { v: ['Vegetariano', 'Vegetarian'], p: ['Picante', 'Spicy'], l: ['Lácteos', 'Dairy'], g: ['Gluten', 'Gluten'], n: ['Nueces', 'Nuts'] };
 // Chips NFC: cuánto cabe en cada uno (bytes útiles para un enlace).
 export const chipFor = (bytes: number) => bytes <= 132 ? 'NTAG213' : bytes <= 492 ? 'NTAG215' : bytes <= 868 ? 'NTAG216' : null;
+
+// Versión para chip: sin descripciones de platillos. Un menú que no cabe completo suele caber así en un NTAG216;
+// el QR sigue llevando el menú completo.
+export const stripDesc = (m: MenuData): MenuData => ({ ...m, s: m.s.map(([n, items]) => [n, items.map(([name, price, , flags]) => [name, price, '', flags] as Item)]) });
+export const linkBytes = (url: string) => new TextEncoder().encode(url.replace(/^https:\/\//, '')).length;

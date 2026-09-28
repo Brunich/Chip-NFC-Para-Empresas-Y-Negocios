@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DEMO, menuLink, readMenu, money, FLAGS, chipFor } from './menu-logic';
+import { DEMO, menuLink, readMenu, money, FLAGS, chipFor, stripDesc, linkBytes } from './menu-logic';
 import type { Item, MenuData } from './menu-logic';
 export { DEMO, menuLink } from './menu-logic';
 import { Plus, Minus, WhatsappLogo, Trash, Leaf, Fire } from '@phosphor-icons/react';
@@ -51,9 +51,11 @@ export function MenuBuilder({ lang }: { lang: Lang }) {
  const es = lang === 'es', t = (a: string, b: string) => es ? a : b;
  const [m, setM] = useState<MenuData>(() => ({ ...DEMO, s: DEMO.s.slice(0, 3).map(([n, items]) => [n, items.map(i => [...i] as Item)]) }));
  const [mesa, setMesa] = useState('');
- const link = menuLink(m, mesa), bytes = new TextEncoder().encode(link.replace(/^https:\/\//, '')).length, chip = chipFor(bytes);
+ const link = menuLink(m, mesa), bytes = linkBytes(link), chip = chipFor(bytes);
+ const lite = menuLink(stripDesc(m), mesa), liteBytes = linkBytes(lite), liteChip = chip ? null : chipFor(liteBytes);
  const [copied, setCopied] = useState(false);
- const upd = (fn: (d: MenuData) => void) => setM(prev => { const d: MenuData = JSON.parse(JSON.stringify(prev)); fn(d); setCopied(false); return d; });
+ const [liteCopied, setLiteCopied] = useState(false);
+ const upd = (fn: (d: MenuData) => void) => setM(prev => { const d: MenuData = JSON.parse(JSON.stringify(prev)); fn(d); setCopied(false); setLiteCopied(false); return d; });
  return <div className="mb">
   <div className="mb-form">
    <div className="mb-two">
@@ -77,7 +79,8 @@ export function MenuBuilder({ lang }: { lang: Lang }) {
   <aside className="mb-out">
    <div className="mb-phone"><iframe title={t('Vista del menú', 'Menu preview')} src={link.replace(location.origin, '')} key={link}/></div>
    <div className="st-linkbox"><input readOnly value={link} aria-label={t('Enlace del menú', 'Menu link')} onFocus={e => e.target.select()}/><button className="st-btn" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setCopied(false); } }}>{copied ? t('Copiado', 'Copied') : t('Copiar', 'Copy')}</button></div>
-   <p className={`mb-chip${chip ? '' : ' no'}`}>{chip ? t(`Cabe en un chip ${chip} (${bytes} bytes).`, `Fits an ${chip} chip (${bytes} bytes).`) : t(`Mide ${bytes} bytes: no cabe en un chip, usa el QR (o acorta descripciones).`, `${bytes} bytes: too big for a chip, use the QR (or shorten descriptions).`)}</p>
+   <p className={`mb-chip${chip || liteChip ? '' : ' no'}`}>{chip ? t(`Cabe en un chip ${chip} (${bytes} bytes).`, `Fits an ${chip} chip (${bytes} bytes).`) : liteChip ? t(`Completo mide ${bytes} bytes y no cabe en un chip. Sin descripciones mide ${liteBytes}: cabe en un ${liteChip}. El QR lleva el menú completo.`, `The full menu is ${bytes} bytes, too big for a chip. Without descriptions it is ${liteBytes}: fits an ${liteChip}. The QR carries the full menu.`) : t(`Mide ${bytes} bytes: no cabe en un chip ni sin descripciones. Usa el QR o divide el menú.`, `${bytes} bytes: too big for a chip even without descriptions. Use the QR or split the menu.`)}</p>
+   {liteChip && <div className="st-linkbox"><input readOnly value={lite} aria-label={t('Enlace para el chip, sin descripciones', 'Chip link, without descriptions')} onFocus={e => e.target.select()}/><button className="st-btn" onClick={async () => { try { await navigator.clipboard.writeText(lite); setLiteCopied(true); } catch { setLiteCopied(false); } }}>{liteCopied ? t('Copiado', 'Copied') : t('Copiar para chip', 'Copy for chip')}</button></div>}
    <div className="st-print"><Qr text={link} label={t('QR del menú', 'Menu QR')}/><p>{t('Imprímelo para la mesa: con el número de mesa, el pedido llega diciendo de dónde viene.', 'Print it for the table: with a table number, the order says where it comes from.')}</p></div>
   </aside>
  </div>;
