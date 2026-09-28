@@ -10,6 +10,8 @@ Una tarjeta de sellos en el celular, como la de cartón de cualquier café: cada
 
 **Pruébalo en vivo:** [bruno-portfolio-azure.vercel.app/proyectos/club-nfc](https://bruno-portfolio-azure.vercel.app/proyectos/club-nfc)
 
+**App Android nativa:** en desarrollo. Leerá y escribirá los chips NFC con el lector del teléfono, sin pasar por el navegador.
+
 ## Cómo funciona
 
 1. **Tap.** El cliente acerca su celular al chip de la cuenta o del mostrador. Se abre su tarjeta: sin app y sin llenar nada.
@@ -49,11 +51,6 @@ npm run build   # tipos + build de producción
 ```
 
 Hecho con React 19, TypeScript y Vite. Necesita Node 22 o más nuevo (las pruebas corren TypeScript directo con Node).
-
-## Lo que sigue
-
-- Panel del negocio con cuántos clientes regresan (eso sí necesita servidor).
-- Tarjetas firmadas para que no se puedan copiar de un celular a otro.
 
 ---
 
