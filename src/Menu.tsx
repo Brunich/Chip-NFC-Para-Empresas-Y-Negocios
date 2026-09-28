@@ -24,12 +24,12 @@ export function MenuPage({ lang }: { lang: Lang }) {
  const add = (name: string, d: number) => setOrder(o => { const n = Math.max(0, (o[name] ?? 0) + d); const next = { ...o, [name]: n }; if (!n) delete next[name]; return next; });
  const text = [`${t('Hola', 'Hi')} ${menu.n}, ${t('quiero pedir', 'I would like to order')}${mesa ? ` (${t('mesa', 'table')} ${mesa})` : ''}:`, ...Object.entries(order).map(([name, n]) => `• ${n} × ${name}`), `${t('Total', 'Total')}: ${money(total)}`].join('\n');
 
- return <main className="mn-page" style={{ ['--c' as string]: `#${menu.c}` }}>
+ return <main className="mn-page" aria-label={t('Menú', 'Menu')} style={{ ['--c' as string]: `#${menu.c}` }}>
   <header className="mn-head">
    <span className="mn-logo">{menu.n.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()}</span>
    <div><h1>{menu.n}</h1><p>{mesa ? t(`Mesa ${mesa} · `, `Table ${mesa} · `) : ''}{t('Elige y manda tu pedido por WhatsApp', 'Pick and send your order via WhatsApp')}</p></div>
   </header>
-  <nav className="mn-cats" aria-label={t('Secciones', 'Sections')}>{menu.s.map(([name], i) => <button key={name} aria-pressed={cat === i} onClick={() => { setCat(i); document.getElementById(`mn-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{name}</button>)}</nav>
+  <nav className="mn-cats" aria-label={t('Secciones del menú', 'Menu sections')}>{menu.s.map(([name], i) => <button key={name} aria-pressed={cat === i} onClick={() => { setCat(i); document.getElementById(`mn-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{name}</button>)}</nav>
   {menu.s.map(([name, items], i) => <section key={name} id={`mn-${i}`} className="mn-sec">
    <h2>{name}</h2>
    {items.map(([item, price, desc, flags], j) => <article key={item} className="mn-item" style={{ ['--i' as string]: j }}>
