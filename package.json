@@ -1,0 +1,34 @@
+{
+  "name": "nfc-negocios",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tarjeta de sellos y menú digital en un chip NFC: el cliente acerca el celular, sin app. React + TypeScript + Web NFC.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test tests/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/dm-sans": "^5.2.6",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "lz-string": "^1.5.0",
+    "qrcode-generator": "^2.0.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.7"
+  }
+}
