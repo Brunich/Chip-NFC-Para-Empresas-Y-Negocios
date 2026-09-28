@@ -61,3 +61,15 @@ test('lo que de verdad cabe en cada chip con el dominio del portafolio', () => {
  assert.equal(chipFor(linkBytes(menuLink(stripDesc(DEMO), '4', O))), 'NTAG216');
  assert.equal(readMenu(new URL(menuLink(stripDesc(DEMO), '', O)).hash).s[0][1][0][2], '');
 });
+
+test('la tarjeta que sale por defecto en /nfc cabe en el chip más barato, y una copia local se detecta', async () => {
+ const { isLocalLink } = await import('../src/chip.ts');
+ const O = 'https://bruno-portfolio-azure.vercel.app';
+ const def = bizLink({ name: 'Café Aurora', goal: 8, prize: 'Un café de la casa', color: '8f7cf0', review: '', wa: '' }, O);
+ assert.equal(chipFor(linkBytes(def)), 'NTAG213');
+ // Los acentos cuentan doble en UTF-8 y los espacios triple al codificarse: un premio largo ya pide NTAG215.
+ const long = bizLink({ name: 'Taquería Los Compadres del Norte', goal: 10, prize: 'Orden de tacos al pastor con refresco', color: '8f7cf0', review: '', wa: '528112345678' }, O);
+ assert.equal(chipFor(linkBytes(long)), 'NTAG215');
+ assert.equal(isLocalLink(bizLink(bizFrom(''), 'http://127.0.0.1:5173')), true);
+ assert.equal(isLocalLink(def), false);
+});

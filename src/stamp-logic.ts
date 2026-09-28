@@ -3,7 +3,8 @@ export type Biz = { name: string; goal: number; prize: string; color: string; re
 export type Card = { stamps: number; last: string; rewards: number; visits: number };
 export type VisitStatus = 'new' | 'today' | 'full';
 
-export const COLORS = ['8f7cf0', '5fcfa9', 'e46a8b', '5aa7e6', 'e8b04a', '4b4fb8'];
+// Colores de la tarjeta, apagados para que ninguno grite; los enlaces viejos con otro color siguen funcionando.
+export const COLORS = ['8f7cf0', '6fb89c', 'c27a92', '7899c4', 'c4a66a', '5a5ea8'];
 export const slug = (s: string) => s.toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'negocio';
 export const today = (d = new Date()) => d.toLocaleDateString('sv');
 export const initials = (s: string) => s.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'N';

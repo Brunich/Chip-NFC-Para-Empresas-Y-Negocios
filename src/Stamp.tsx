@@ -9,6 +9,7 @@ import type { Biz, Card, VisitStatus } from './stamp-logic';
 export { COLORS, bizFrom, bizLink, pinHash } from './stamp-logic';
 export type { Biz } from './stamp-logic';
 import { bizLink } from './stamp-logic';
+import { chipFor, linkBytes, isLocalLink } from './chip';
 type Lang = 'es' | 'en';
 
 export function Qr({ text, label }: { text: string; label: string }) {
@@ -34,7 +35,7 @@ export function CardFace({ biz, stamps, fresh, lang }: { biz: Biz; stamps: numbe
  return <div className="st-card" style={{ ['--c' as string]: `#${biz.color}` }}>
   <div className="st-card-top"><span className="st-logo">{initials(biz.name)}</span><div><strong>{biz.name}</strong><small>{es ? 'Tarjeta de sellos' : 'Stamp card'}</small></div><b className="st-count">{stamps}<span>/{biz.goal}</span></b></div>
   <div className="st-stamps" role="img" aria-label={es ? `${stamps} de ${biz.goal} sellos` : `${stamps} of ${biz.goal} stamps`} style={{ ['--n' as string]: biz.goal > 8 ? 6 : Math.ceil(biz.goal / 2) }}>
-   {Array.from({ length: biz.goal }, (_, i) => <span key={i} className={`${i < stamps ? 'on' : ''}${i === fresh ? ' fresh' : ''}`} style={{ ['--i' as string]: i }}>{i === biz.goal - 1 ? '★' : i < stamps ? '✓' : ''}</span>)}
+   {Array.from({ length: biz.goal }, (_, i) => <span key={i} className={`${i < stamps ? 'on' : ''}${i === fresh ? ' fresh' : ''}${i === biz.goal - 1 ? ' prize' : ''}`} style={{ ['--i' as string]: i, ['--r' as string]: `${(i * 47) % 26 - 13}deg` }}>{i < stamps ? <i>{initials(biz.name)}</i> : i === biz.goal - 1 ? '★' : ''}</span>)}
   </div>
   <p className="st-prize">{es ? 'Premio' : 'Reward'}: <b>{biz.prize}</b></p>
  </div>;
@@ -67,7 +68,7 @@ export function StampPage({ lang }: { lang: Lang }) {
   <div className="st-glow" aria-hidden="true"/>
   <CardFace biz={biz} stamps={card.stamps} fresh={status !== 'today' ? card.stamps - 1 : undefined} lang={lang} key={card.stamps}/>
   <section className="st-msg" aria-live="polite">
-   {status === 'new' && <><h1>{es ? '¡Sello de hoy listo!' : 'Today’s stamp is in!'}</h1><p>{es ? `Te ${left === 1 ? 'falta 1' : `faltan ${left}`} para: ${biz.prize}.` : `${left} more for: ${biz.prize}.`}</p></>}
+   {status === 'new' && <><h1>{card.visits === 1 ? (es ? `¡Bienvenido a ${biz.name}!` : `Welcome to ${biz.name}!`) : (es ? '¡Sello de hoy listo!' : 'Today’s stamp is in!')}</h1>{card.visits === 1 && <p>{es ? 'Tu primer sello ya está. Vuelve otro día y suma el siguiente.' : 'Your first stamp is in. Come back another day for the next one.'}</p>}<p>{es ? `Te ${left === 1 ? 'falta 1' : `faltan ${left}`} para: ${biz.prize}.` : `${left} more for: ${biz.prize}.`}</p></>}
    {status === 'today' && <><h1>{card.stamps ? (es ? 'Ya tienes el sello de hoy.' : 'You already have today’s stamp.') : (es ? 'Tarjeta canjeada.' : 'Card redeemed.')}</h1><p>{es ? 'Uno por día: vuelve pronto por el siguiente.' : 'One a day: come back soon for the next one.'}</p></>}
    {status === 'full' && !confirm && <><h1>{es ? '¡Tarjeta completa!' : 'Card complete!'}</h1><p>{es ? `Tu premio: ${biz.prize}. Enséñale esta pantalla a quien te atiende.` : `Your reward: ${biz.prize}. Show this screen to the staff.`}</p><button className="st-btn" onClick={() => setConfirm(true)}>{es ? 'Canjear premio' : 'Redeem reward'}</button></>}
    {status === 'full' && confirm && <><h1>{es ? '¿Ya te lo dieron?' : 'Did you get it?'}</h1><p>{biz.pin ? (es ? 'Quien te atiende escribe el PIN del negocio para canjearlo.' : 'The staff types the business PIN to redeem it.') : (es ? 'Que lo confirme alguien del negocio: la tarjeta vuelve a empezar.' : 'Let the staff confirm it: the card starts over.')}</p>{biz.pin && <input className="st-pin" value={pin} inputMode="numeric" maxLength={6} autoComplete="off" aria-label="PIN" placeholder="PIN" onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setPinErr(false); }}/>}{pinErr && <p className="st-err">{es ? 'PIN incorrecto.' : 'Wrong PIN.'}</p>}<div className="st-row"><button className="st-btn" onClick={() => void redeem()}>{es ? 'Sí, canjeado' : 'Yes, redeemed'}</button><button className="st-btn ghost" onClick={() => setConfirm(false)}>{es ? 'Todavía no' : 'Not yet'}</button></div></>}
@@ -83,14 +84,16 @@ export function StampPage({ lang }: { lang: Lang }) {
 
 export function NfcSetup({ lang }: { lang: Lang }) {
  const es = lang === 'es';
- const [biz, setBiz] = useState<Biz>({ name: 'El Cerro', goal: 8, prize: es ? 'Postre de la casa' : 'House dessert', color: COLORS[0], review: '', wa: '' });
+ const [biz, setBiz] = useState<Biz>({ name: 'Café Aurora', goal: 8, prize: es ? 'Un café de la casa' : 'A free coffee', color: COLORS[0], review: '', wa: '' });
  const [copied, setCopied] = useState(false);
  const [nfc, setNfc] = useState<'idle' | 'wait' | 'ok' | 'error'>('idle');
+ const [check, setCheck] = useState<'idle' | 'wait' | 'same' | 'other' | 'error'>('idle');
+ const [found, setFound] = useState('');
  const [pin, setPin] = useState('');
  useEffect(() => { let alive = true; if (/^\d{4,6}$/.test(pin)) void pinHash(biz.name, pin).then(h => { if (alive) setBiz(b => b.pin === h ? b : { ...b, pin: h }); }); else setBiz(b => b.pin ? { ...b, pin: undefined } : b); return () => { alive = false; }; }, [pin, biz.name]);
- const link = bizLink(biz);
+ const link = bizLink(biz), bytes = linkBytes(link), chip = chipFor(bytes);
  const canWrite = typeof window !== 'undefined' && 'NDEFReader' in window;
- const set = (p: Partial<Biz>) => { setBiz(b => ({ ...b, ...p })); setCopied(false); setNfc('idle'); };
+ const set = (p: Partial<Biz>) => { setBiz(b => ({ ...b, ...p })); setCopied(false); setNfc('idle'); setCheck('idle'); };
 
  async function writeChip() {
   try {
@@ -99,6 +102,21 @@ export function NfcSetup({ lang }: { lang: Lang }) {
    await new Reader().write({ records: [{ recordType: 'url', data: link }] });
    setNfc('ok');
   } catch { setNfc('error'); }
+ }
+ // Comprobar: lee el chip y compara su enlace con el que armaste.
+ async function checkChip() {
+  try {
+   setCheck('wait');
+   type Rec = { recordType: string; data?: DataView };
+   const Reader = (window as unknown as { NDEFReader: new () => { scan: (o?: { signal?: AbortSignal }) => Promise<void>; onreading: ((e: { message: { records: Rec[] } }) => void) | null } }).NDEFReader;
+   const reader = new Reader(), stop = new AbortController();
+   reader.onreading = e => {
+    const rec = e.message.records.find(x => x.recordType === 'url');
+    const url = rec?.data ? new TextDecoder().decode(rec.data) : '';
+    setFound(url); setCheck(url === link ? 'same' : 'other'); stop.abort();
+   };
+   await reader.scan({ signal: stop.signal });
+  } catch { setCheck('error'); }
  }
  async function copy() { try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setCopied(false); } }
 
@@ -117,9 +135,15 @@ export function NfcSetup({ lang }: { lang: Lang }) {
   <div className="st-out">
    <CardFace biz={biz} stamps={Math.min(3, biz.goal)} lang={lang}/>
    <div className="st-linkbox"><input readOnly value={link} aria-label={es ? 'Enlace del chip' : 'Chip link'} onFocus={e => e.target.select()}/><button className="st-btn" onClick={copy}>{copied ? (es ? 'Copiado' : 'Copied') : (es ? 'Copiar' : 'Copy')}</button></div>
+   <p className={`st-chip${chip ? '' : ' no'}`}>{chip ? (es ? `Cabe en un chip ${chip} (${bytes} de ${chip === 'NTAG213' ? 132 : chip === 'NTAG215' ? 492 : 868} bytes).` : `Fits an ${chip} chip (${bytes} of ${chip === 'NTAG213' ? 132 : chip === 'NTAG215' ? 492 : 868} bytes).`) : (es ? `El enlace mide ${bytes} bytes y no cabe en ningún chip común: acorta el nombre o el premio.` : `The link is ${bytes} bytes and fits no common chip: shorten the name or reward.`)}</p>
+   {isLocalLink(link) && <p className="st-chip no">{es ? 'Estás en una copia local: este enlace no abriría en otro celular. Arma la tarjeta desde la página publicada.' : 'This is a local copy: the link would not open on another phone. Build the card from the published site.'}</p>}
    <div className="st-actions">
-    {canWrite ? <button className="st-btn" onClick={writeChip} disabled={nfc === 'wait'}>{nfc === 'wait' ? (es ? 'Acerca el chip al celular…' : 'Hold the chip to the phone…') : (es ? 'Grabar en el chip' : 'Write to the chip')}</button>
+    {canWrite ? <button className="st-btn" onClick={writeChip} disabled={nfc === 'wait' || !chip}>{nfc === 'wait' ? (es ? 'Acerca el chip al celular…' : 'Hold the chip to the phone…') : (es ? 'Grabar en el chip' : 'Write to the chip')}</button>
      : <p className="st-hint">{es ? 'Para grabar desde aquí abre esta página en Chrome de Android. En iPhone usa la app gratuita NFC Tools: Escribir → Añadir registro → URL → pega el enlace.' : 'To write from here, open this page in Chrome on Android. On iPhone use the free NFC Tools app: Write → Add record → URL → paste the link.'}</p>}
+    {canWrite && <button className="st-btn ghost" onClick={checkChip} disabled={check === 'wait'}>{check === 'wait' ? (es ? 'Acerca el chip para leerlo…' : 'Hold the chip to read it…') : (es ? '¿Quedó bien grabado?' : 'Was it written right?')}</button>}
+    {check === 'same' && <p className="st-ok">{es ? 'El chip tiene exactamente este enlace.' : 'The chip holds exactly this link.'}</p>}
+    {check === 'other' && <p className="st-err">{es ? `El chip tiene otro enlace${found ? `: ${found.slice(0, 60)}…` : ' o está vacío'}. Vuelve a grabarlo.` : `The chip holds a different link${found ? `: ${found.slice(0, 60)}…` : ' or is empty'}. Write it again.`}</p>}
+    {check === 'error' && <p className="st-err">{es ? 'No se pudo leer. Prende el NFC y acerca el chip a la parte de atrás del celular.' : 'Could not read it. Turn NFC on and hold the chip to the back of the phone.'}</p>}
     {nfc === 'ok' && <p className="st-ok">{es ? 'Listo: acerca un celular al chip para probarlo.' : 'Done: tap a phone on the chip to try it.'}</p>}
     {nfc === 'error' && <p className="st-err">{es ? 'No se pudo grabar. Revisa que el NFC esté prendido y vuelve a intentarlo.' : 'Could not write it. Check NFC is on and try again.'}</p>}
     <a className="st-btn ghost" href={`${link}&demo`} target="_blank" rel="noreferrer">{es ? 'Abrir como cliente' : 'Open as a customer'}</a>
