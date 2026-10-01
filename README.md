@@ -1,6 +1,6 @@
 # NFC para negocios
 
-[![CI](https://github.com/Brunich/nfc-negocios/actions/workflows/ci.yml/badge.svg)](https://github.com/Brunich/nfc-negocios/actions/workflows/ci.yml)
+[![CI](https://github.com/Brunich/Chip-NFC-Para-Empresas-Y-Negocios/actions/workflows/ci.yml/badge.svg)](https://github.com/Brunich/Chip-NFC-Para-Empresas-Y-Negocios/actions/workflows/ci.yml)
 
 *Que vuelvan, sin quitarles tiempo.*
 
@@ -51,6 +51,10 @@ npm run build   # tipos + build de producción
 ```
 
 Hecho con React 19, TypeScript y Vite. Necesita Node 22 o más nuevo (las pruebas corren TypeScript directo con Node).
+
+## Licencia
+
+[MIT](LICENSE). Úsalo, cámbialo y compártelo; sólo conserva el aviso de copyright.
 
 ---
 
