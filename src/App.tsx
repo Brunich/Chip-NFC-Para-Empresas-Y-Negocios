@@ -4,9 +4,11 @@ import type { Lang } from './Shell';
 import { info } from './info';
 import { NfcSetup, StampPage } from './Stamp';
 import { MenuBuilder, MenuPage } from './Menu';
+import { followChips } from './native';
 
 // El chip abre /sello (la tarjeta del cliente) o /menu (la carta); la raíz es donde el negocio arma las suyas.
 const path = location.pathname.replace(/\/$/, '');
+followChips();
 const guess: Lang = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es';
 
 function Setup({ lang }: { lang: Lang }) {

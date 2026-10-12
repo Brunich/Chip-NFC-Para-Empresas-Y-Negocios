@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NFC para negocios</string>
+    <string name="title_activity_main">NFC para negocios</string>
+    <string name="package_name">com.brunich.nfcnegocios</string>
+    <string name="custom_url_scheme">com.brunich.nfcnegocios</string>
+</resources>
