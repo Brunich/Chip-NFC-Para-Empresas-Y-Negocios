@@ -10,6 +10,8 @@ export { COLORS, bizFrom, bizLink, pinHash } from './stamp-logic';
 export type { Biz } from './stamp-logic';
 import { bizLink } from './stamp-logic';
 import { chipFor, linkBytes, isLocalLink } from './chip';
+import { inApp, isApp, linkOrigin } from './native';
+import ChipWriter from './ChipWriter';
 type Lang = 'es' | 'en';
 
 export function Qr({ text, label }: { text: string; label: string }) {
@@ -86,38 +88,11 @@ export function NfcSetup({ lang }: { lang: Lang }) {
  const es = lang === 'es';
  const [biz, setBiz] = useState<Biz>({ name: 'Café Aurora', goal: 8, prize: es ? 'Un café de la casa' : 'A free coffee', color: COLORS[0], review: '', wa: '' });
  const [copied, setCopied] = useState(false);
- const [nfc, setNfc] = useState<'idle' | 'wait' | 'ok' | 'error'>('idle');
- const [check, setCheck] = useState<'idle' | 'wait' | 'same' | 'other' | 'error'>('idle');
- const [found, setFound] = useState('');
  const [pin, setPin] = useState('');
  useEffect(() => { let alive = true; if (/^\d{4,6}$/.test(pin)) void pinHash(biz.name, pin).then(h => { if (alive) setBiz(b => b.pin === h ? b : { ...b, pin: h }); }); else setBiz(b => b.pin ? { ...b, pin: undefined } : b); return () => { alive = false; }; }, [pin, biz.name]);
- const link = bizLink(biz), bytes = linkBytes(link), chip = chipFor(bytes);
- const canWrite = typeof window !== 'undefined' && 'NDEFReader' in window;
- const set = (p: Partial<Biz>) => { setBiz(b => ({ ...b, ...p })); setCopied(false); setNfc('idle'); setCheck('idle'); };
+ const link = bizLink(biz, linkOrigin()), bytes = linkBytes(link), chip = chipFor(bytes);
+ const set = (p: Partial<Biz>) => { setBiz(b => ({ ...b, ...p })); setCopied(false); };
 
- async function writeChip() {
-  try {
-   setNfc('wait');
-   const Reader = (window as unknown as { NDEFReader: new () => { write: (m: unknown) => Promise<void> } }).NDEFReader;
-   await new Reader().write({ records: [{ recordType: 'url', data: link }] });
-   setNfc('ok');
-  } catch { setNfc('error'); }
- }
- // Comprobar: lee el chip y compara su enlace con el que armaste.
- async function checkChip() {
-  try {
-   setCheck('wait');
-   type Rec = { recordType: string; data?: DataView };
-   const Reader = (window as unknown as { NDEFReader: new () => { scan: (o?: { signal?: AbortSignal }) => Promise<void>; onreading: ((e: { message: { records: Rec[] } }) => void) | null } }).NDEFReader;
-   const reader = new Reader(), stop = new AbortController();
-   reader.onreading = e => {
-    const rec = e.message.records.find(x => x.recordType === 'url');
-    const url = rec?.data ? new TextDecoder().decode(rec.data) : '';
-    setFound(url); setCheck(url === link ? 'same' : 'other'); stop.abort();
-   };
-   await reader.scan({ signal: stop.signal });
-  } catch { setCheck('error'); }
- }
  async function copy() { try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setCopied(false); } }
 
  return <div className="st-setup">
@@ -129,7 +104,7 @@ export function NfcSetup({ lang }: { lang: Lang }) {
    </div>
    <fieldset><legend>{es ? 'Color' : 'Color'}</legend>{COLORS.map(c => <button type="button" key={c} aria-label={`#${c}`} aria-pressed={biz.color === c} style={{ background: `#${c}` }} onClick={() => set({ color: c })}/>)}</fieldset>
    <label>{es ? 'Enlace para reseñas (opcional)' : 'Review link (optional)'}<input value={biz.review} placeholder="https://g.page/r/…/review" onChange={e => set({ review: e.target.value.trim() })}/></label>
-   <label>{es ? 'PIN para canjear el premio (opcional, 4 a 6 números)' : 'PIN to redeem the reward (optional, 4–6 digits)'}<input value={pin} inputMode="numeric" maxLength={6} autoComplete="off" placeholder="2468" onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setCopied(false); setNfc('idle'); }}/></label>
+   <label>{es ? 'PIN para canjear el premio (opcional, 4 a 6 números)' : 'PIN to redeem the reward (optional, 4–6 digits)'}<input value={pin} inputMode="numeric" maxLength={6} autoComplete="off" placeholder="2468" onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setCopied(false); }}/></label>
    <label>{es ? 'WhatsApp del negocio (opcional)' : 'Business WhatsApp (optional)'}<input value={biz.wa} inputMode="tel" placeholder="52 81 1234 5678" onChange={e => set({ wa: e.target.value })}/></label>
   </form>
   <div className="st-out">
@@ -138,15 +113,8 @@ export function NfcSetup({ lang }: { lang: Lang }) {
    <p className={`st-chip${chip ? '' : ' no'}`}>{chip ? (es ? `Cabe en un chip ${chip} (${bytes} de ${chip === 'NTAG213' ? 132 : chip === 'NTAG215' ? 492 : 868} bytes).` : `Fits an ${chip} chip (${bytes} of ${chip === 'NTAG213' ? 132 : chip === 'NTAG215' ? 492 : 868} bytes).`) : (es ? `El enlace mide ${bytes} bytes y no cabe en ningún chip común: acorta el nombre o el premio.` : `The link is ${bytes} bytes and fits no common chip: shorten the name or reward.`)}</p>
    {isLocalLink(link) && <p className="st-chip no">{es ? 'Estás en una copia local: este enlace no abriría en otro celular. Arma la tarjeta desde la página publicada.' : 'This is a local copy: the link would not open on another phone. Build the card from the published site.'}</p>}
    <div className="st-actions">
-    {canWrite ? <button className="st-btn" onClick={writeChip} disabled={nfc === 'wait' || !chip}>{nfc === 'wait' ? (es ? 'Acerca el chip al celular…' : 'Hold the chip to the phone…') : (es ? 'Grabar en el chip' : 'Write to the chip')}</button>
-     : <p className="st-hint">{es ? 'Para grabar desde aquí abre esta página en Chrome de Android. En iPhone usa la app gratuita NFC Tools: Escribir → Añadir registro → URL → pega el enlace.' : 'To write from here, open this page in Chrome on Android. On iPhone use the free NFC Tools app: Write → Add record → URL → paste the link.'}</p>}
-    {canWrite && <button className="st-btn ghost" onClick={checkChip} disabled={check === 'wait'}>{check === 'wait' ? (es ? 'Acerca el chip para leerlo…' : 'Hold the chip to read it…') : (es ? '¿Quedó bien grabado?' : 'Was it written right?')}</button>}
-    {check === 'same' && <p className="st-ok">{es ? 'El chip tiene exactamente este enlace.' : 'The chip holds exactly this link.'}</p>}
-    {check === 'other' && <p className="st-err">{es ? `El chip tiene otro enlace${found ? `: ${found.slice(0, 60)}…` : ' o está vacío'}. Vuelve a grabarlo.` : `The chip holds a different link${found ? `: ${found.slice(0, 60)}…` : ' or is empty'}. Write it again.`}</p>}
-    {check === 'error' && <p className="st-err">{es ? 'No se pudo leer. Prende el NFC y acerca el chip a la parte de atrás del celular.' : 'Could not read it. Turn NFC on and hold the chip to the back of the phone.'}</p>}
-    {nfc === 'ok' && <p className="st-ok">{es ? 'Listo: acerca un celular al chip para probarlo.' : 'Done: tap a phone on the chip to try it.'}</p>}
-    {nfc === 'error' && <p className="st-err">{es ? 'No se pudo grabar. Revisa que el NFC esté prendido y vuelve a intentarlo.' : 'Could not write it. Check NFC is on and try again.'}</p>}
-    <a className="st-btn ghost" href={`${link}&demo`} target="_blank" rel="noreferrer">{es ? 'Abrir como cliente' : 'Open as a customer'}</a>
+    <ChipWriter link={link} lang={lang} disabled={!chip}/>
+    <a className="st-btn ghost" href={inApp(`${link}&demo`)} {...(isApp ? {} : { target: '_blank', rel: 'noreferrer' })}>{es ? 'Abrir como cliente' : 'Open as a customer'}</a>
    </div>
    <div className="st-print"><Qr text={link} label={es ? 'QR del enlace' : 'Link QR code'}/><p>{es ? 'El mismo enlace en QR, para los celulares sin NFC. Imprímelo junto al chip.' : 'The same link as a QR, for phones without NFC. Print it next to the chip.'}</p></div>
   </div>
